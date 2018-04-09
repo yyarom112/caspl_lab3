@@ -33,7 +33,9 @@ const char *digit = "0123456789abcdef";
 const char *DIGIT = "0123456789ABCDEF";
 
 state_result
-(*func_machine_state_arr[3])(va_list args, int *out_printed_chars, state_args *state, int *neg, int *padd, int *zero);
+(*func_machine_state_arr[3])(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value,
+                             int *nDigits, int *zero,
+                             int *padd, int *neg);
 
 state_result (*func_precent_state_arr[128])(va_list args, int *out_printed_chars, state_args *state, int *int_value,
                                             char *string_value, int *nDigits, int *zero, int *padd, int *neg);
@@ -41,6 +43,10 @@ state_result (*func_precent_state_arr[128])(va_list args, int *out_printed_chars
 state_result
 (*func_A_state_arr[128])(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value);
 
+state_result
+(*func_A_state_arr[128])(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value);
+state_result
+(*func_init_state_arr[128])(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value, int *nDigits, int *zero, int *padd, int *neg);
 int print_int_helper(unsigned int n, int radix, const char *digit) {
     int result;
 
@@ -83,23 +89,23 @@ precent_state_handler(va_list args, int *out_printed_chars, state_args *state, i
 }
 
 state_result
+defult_init_state_handler(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value,
+                          int *nDigits, int *zero,
+                          int *padd, int *neg){
+    state_result res;
+    res.printed_chars = 0;
+    putchar(*(state->fs));
+    res.printed_chars += 1;
+    res.next_state = st_printf_init;
+    return res;
+}
+
+state_result
 init_state_handler(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value,
                    int *nDigits, int *zero,
                    int *padd, int *neg) {
-    state_result res;
-    res.printed_chars = 0;
-    switch (*(state->fs)) {
-        case '%':
-            res = precent_state_handler(args, out_printed_chars, state, int_value, string_value, nDigits, zero, padd,
-                                        neg);
-            return res;
+     return func_init_state_arr[(unsigned char)*(state->fs)]( args,out_printed_chars, state,int_value, string_value, nDigits, zero, padd, neg);
 
-        default:
-            putchar(*(state->fs));
-            res.printed_chars += 1;
-    }
-    res.next_state = st_printf_init;
-    return res;
 }
 
 state_result
@@ -252,7 +258,6 @@ c_state_handler(va_list args, int *out_printed_chars, state_args *state, int *in
     char char_value = (char) va_arg(args, int);
     putchar(char_value);
     res.printed_chars += 1;
-//    char_value = 0;
     res.next_state = st_printf_init;
     return res;
 }
@@ -271,6 +276,7 @@ state_result DA_arr_state(va_list args, char **arr_string_value, char char_value
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result BA_arr_state(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value) {
@@ -287,6 +293,7 @@ state_result BA_arr_state(va_list args, char **arr_string_value, char char_value
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result OA_arr_state(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value) {
@@ -303,6 +310,7 @@ state_result OA_arr_state(va_list args, char **arr_string_value, char char_value
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result
@@ -320,6 +328,7 @@ xA_small_arr_state(va_list args, char **arr_string_value, char char_value, int *
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result
@@ -337,6 +346,7 @@ XA_large_arr_state(va_list args, char **arr_string_value, char char_value, int *
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result UA_arr_state(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value) {
@@ -353,6 +363,7 @@ state_result UA_arr_state(va_list args, char **arr_string_value, char char_value
             res.printed_chars++;
         }
     }
+    return res;
 }
 
 state_result SA_arr_state(va_list args, char **arr_string_value, char char_value, int *arr_value, char *string_value) {
@@ -395,15 +406,13 @@ A_state_handler(va_list args, int *out_printed_chars, state_args *state, int *in
                 int *padd, int *neg) {
     state_result res, tmp;
     res.printed_chars = 0;
-    int i = 0, len = 0;
-    char **arr_string_value;
-    char char_value;
-    int *arr_value;
-    char **s;
+    char **arr_string_value = NULL;
+    char char_value = 0;
+    int *arr_value = NULL;
     ++state->fs;
     putchar('{');
     res.printed_chars++;
-    tmp = func_A_state_arr[(*state->fs)](args, arr_string_value, char_value, arr_value, string_value);
+    tmp = func_A_state_arr[(unsigned char)(*state->fs)](args, arr_string_value, char_value, arr_value, string_value);
     res.next_state = tmp.next_state;
     res.printed_chars += tmp.printed_chars;
     putchar('}');
@@ -541,19 +550,17 @@ error_func_precent(va_list args, int *out_printed_chars, state_args *state, int 
     state_result res;
     res.printed_chars = 0;
     res.next_state = st_printf_error;
+    return res;
 }
 
 
 state_result
-printf_percent_state_handler(va_list args, int *out_printed_chars, state_args *state, int *neg, int *padd,
-                             int *zero) {
-    int len = 0, i = 0;
+printf_percent_state_handler(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value,
+                             int *nDigits, int *zero,
+                             int *padd, int *neg) {
 
-    int int_value = 0;
-    char *string_value;
-    int nDigits;
-    return func_precent_state_arr[*(state->fs)](args, out_printed_chars, state, &int_value, string_value,
-                                                &nDigits, zero, padd, neg);
+    return func_precent_state_arr[(unsigned char)*(state->fs)](args, out_printed_chars, state, int_value, string_value,
+                                                nDigits, zero, padd, neg);
 }
 
 /* SUPPORTED:
@@ -562,19 +569,22 @@ printf_percent_state_handler(va_list args, int *out_printed_chars, state_args *s
  *   %s -- strings
  */
 state_result
-error_state_handler(va_list args, int *out_printed_chars, state_args *state, int *neg, int *padd, int *zero) {
+error_state_handler(va_list args, int *out_printed_chars, state_args *state, int *int_value, char *string_value,
+                    int *nDigits, int *zero,
+                    int *padd, int *neg) {
     toy_printf("toy_printf: Unknown state -- %d\n", (int) state->state);
     exit(-1);
 }
 
 
 int toy_printf(char *fs, ...) {
-    int padd = 0, zero = 0, neg = 0, i = 0;
+    int padd = 0, zero = 0, neg = 0, i = 0, int_value=0,nDigits=0;
     int chars_printed = 0;
+    char string_value;
     va_list args;
     state_args state;
+    va_start(args, *fs);
     state.fs = fs;
-    va_start(args, state.fs);
     state_result res;
     func_machine_state_arr[0] = init_state_handler;
     func_machine_state_arr[1] = printf_percent_state_handler;
@@ -583,6 +593,7 @@ int toy_printf(char *fs, ...) {
     for (i = 0; i < 128; i++) {
         func_precent_state_arr[i] = error_func_precent;
         func_A_state_arr[i] = error_func_precent;
+        func_init_state_arr[i]=defult_init_state_handler;
     }
     func_precent_state_arr[48] = zero_state_handler;
     func_precent_state_arr[49] = one_state_handler;
@@ -607,19 +618,23 @@ int toy_printf(char *fs, ...) {
     func_precent_state_arr[45] = minus_state_handler;
 
 
-    func_A_state_arr[88] = XA_large_arr_state;
-    func_A_state_arr[98] = BA_arr_state;
-    func_A_state_arr[99] = CA_arr_state;
-    func_A_state_arr[100] = DA_arr_state;
-    func_A_state_arr[111] = OA_arr_state;
-    func_A_state_arr[115] = SA_arr_state;
-    func_A_state_arr[117] = UA_arr_state;
-    func_A_state_arr[120] = xA_small_arr_state;
+    func_A_state_arr['X'] = XA_large_arr_state;
+    func_A_state_arr['b'] = BA_arr_state;
+    func_A_state_arr['c'] = CA_arr_state;
+    func_A_state_arr['d'] = DA_arr_state;
+    func_A_state_arr['o'] = OA_arr_state;
+    func_A_state_arr['s'] = SA_arr_state;
+    func_A_state_arr['u'] = UA_arr_state;
+    func_A_state_arr['x'] = xA_small_arr_state;
+
+    func_init_state_arr['%']=precent_state_handler;
 
 
     state.state = st_printf_init;
     for (; *state.fs != '\0'; ++state.fs) {
-        res = func_machine_state_arr[state.state](args, &chars_printed, &state, &neg, &padd, &zero);
+        res = func_machine_state_arr[state.state](args,&chars_printed,&state, &int_value,&string_value,
+        &nDigits, &zero,
+        &padd, &neg);
         chars_printed += res.printed_chars;
         state.state = res.next_state;
     }
