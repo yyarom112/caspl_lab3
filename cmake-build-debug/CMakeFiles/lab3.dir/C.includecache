@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/yyarom/archi/lab3/main[1].c
+toy_stdio.h
+/home/yyarom/archi/lab3/toy_stdio.h
+
+/home/yyarom/archi/lab3/toy_printf.c
+stdio.h
+-
+stdlib.h
+-
+stdarg.h
+-
+memory.h
+-
+
+/home/yyarom/archi/lab3/toy_stdio.h
+
